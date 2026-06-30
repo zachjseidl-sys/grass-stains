@@ -26,4 +26,5 @@ func _run_opening() -> void:
 	fade_out.parallel().tween_property(subtitle_label, "modulate:a", 0.0, 1.0)
 	await fade_out.finished
 	sequence_running = false
+	fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false

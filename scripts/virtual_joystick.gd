@@ -1,25 +1,22 @@
 extends Control
 
-signal action_pressed
-
-@export var side: String = "left"
 @export var max_radius: float = 90.0
 @export var deadzone: float = 0.12
 
-var touch_index: int = -1
+var pointer_index: int = -1
 var center: Vector2 = Vector2.ZERO
 var output: Vector2 = Vector2.ZERO
 var active: bool = false
+var using_mouse: bool = false
 
 @onready var base: Control = $Base
 @onready var knob: Control = $Base/Knob
 
 
 func _ready() -> void:
-	base.modulate.a = 0.35
-	knob.modulate.a = 0.65
 	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mouse_filter = Control.MOUSE_FILTER_STOP
 
 
 func _draw() -> void:
@@ -34,25 +31,40 @@ func _draw() -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
-		if event.pressed and touch_index == -1:
-			var rect := get_global_rect()
-			if not rect.has_point(event.position):
-				return
-			touch_index = event.index
-			center = event.position
-			base.global_position = center - base.size * 0.5
-			base.visible = true
-			active = true
+		_handle_press(event.index, event.position, event.pressed, false)
+	elif event is InputEventScreenDrag:
+		if event.index == pointer_index:
 			_update_knob(event.position)
-		elif not event.pressed and event.index == touch_index:
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		_handle_press(0, event.position, event.pressed, true)
+	elif event is InputEventMouseMotion:
+		if active and using_mouse and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			_update_knob(event.position)
+
+
+func _handle_press(index: int, pos: Vector2, pressed: bool, mouse: bool) -> void:
+	if pressed:
+		if pointer_index != -1:
+			return
+		if not get_global_rect().has_point(pos):
+			return
+		pointer_index = index
+		using_mouse = mouse
+		center = pos
+		base.global_position = center - base.size * 0.5
+		base.visible = true
+		active = true
+		_update_knob(pos)
+		accept_event()
+	else:
+		if index == pointer_index or (mouse and using_mouse):
 			_reset()
-	elif event is InputEventScreenDrag and event.index == touch_index:
-		_update_knob(event.position)
+			accept_event()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not active:
-		output = output.lerp(Vector2.ZERO, 0.2)
+		output = output.lerp(Vector2.ZERO, 0.2 * delta * 60.0)
 
 
 func _update_knob(pos: Vector2) -> void:
@@ -69,13 +81,12 @@ func _update_knob(pos: Vector2) -> void:
 
 
 func _reset() -> void:
-	touch_index = -1
+	pointer_index = -1
+	using_mouse = false
 	active = false
 	output = Vector2.ZERO
 	base.visible = false
 
 
 func get_output() -> Vector2:
-	if side == "left":
-		return output
 	return output

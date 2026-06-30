@@ -39,10 +39,19 @@ func _physics_process(delta: float) -> void:
 
 
 func _apply_movement(delta: float) -> void:
+	var max_speed := GameSettings.MAX_SPEED
 	if engine_state == EngineState.OFF or engine_state == EngineState.STARTING:
-		speed = move_toward(speed, 0.0, GameSettings.DECEL * delta)
-	else:
-		var target_speed := move_input.y * GameSettings.MAX_SPEED
+		# Push the mower by hand before/without the engine running.
+		max_speed *= 0.45
+	elif engine_state == EngineState.IDLE:
+		max_speed *= 0.65
+
+	if engine_state == EngineState.OFF or engine_state == EngineState.STARTING or engine_state == EngineState.IDLE:
+		var target_speed := move_input.y * max_speed
+		var rate := GameSettings.ACCEL if absf(target_speed) > absf(speed) else GameSettings.DECEL
+		speed = move_toward(speed, target_speed, rate * delta)
+	elif engine_state == EngineState.RUNNING:
+		var target_speed := move_input.y * max_speed
 		target_speed *= lerpf(1.0, GameSettings.GRASS_RESISTANCE, 1.0 - grass_resistance)
 		var rate := GameSettings.ACCEL if absf(target_speed) > absf(speed) else GameSettings.DECEL
 		speed = move_toward(speed, target_speed, rate * delta)
