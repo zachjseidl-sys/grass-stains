@@ -1,0 +1,348 @@
+[gd_scene load_steps=24 format=3 uid="uid://grassstainsmain"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/mow_mask_manager.gd" id="2_mask"]
+[ext_resource type="Script" path="res://scripts/property_environment.gd" id="3_prop"]
+[ext_resource type="Script" path="res://scripts/grass_field.gd" id="4_grass"]
+[ext_resource type="Script" path="res://scripts/mower_controller.gd" id="5_mower"]
+[ext_resource type="Script" path="res://scripts/camera_controller.gd" id="6_cam"]
+[ext_resource type="Script" path="res://scripts/touch_input.gd" id="7_touch"]
+[ext_resource type="Script" path="res://scripts/virtual_joystick.gd" id="8_joystick"]
+[ext_resource type="Script" path="res://scripts/grading_screen.gd" id="9_grade"]
+[ext_resource type="Script" path="res://scripts/opening_sequence.gd" id="10_open"]
+[ext_resource type="Script" path="res://scripts/audio_manager.gd" id="11_audio"]
+[ext_resource type="AudioStream" path="res://audio/engine_idle.wav" id="12_eng"]
+[ext_resource type="AudioStream" path="res://audio/grass_cut.wav" id="13_cut"]
+[ext_resource type="AudioStream" path="res://audio/birds.wav" id="14_birds"]
+[ext_resource type="AudioStream" path="res://audio/wind.wav" id="15_wind"]
+[ext_resource type="AudioStream" path="res://audio/starter.wav" id="16_start"]
+[ext_resource type="AudioStream" path="res://audio/engine_load.wav" id="17_load"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+radius = 0.35
+height = 1.2
+
+[sub_resource type="BoxMesh" id="BoxMesh_deck"]
+size = Vector3(0.85, 0.25, 0.55)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mower"]
+albedo_color = Color(0.78, 0.2, 0.16, 1)
+roughness = 0.75
+
+[sub_resource type="BoxMesh" id="BoxMesh_handle"]
+size = Vector3(0.08, 0.9, 0.08)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_handle"]
+albedo_color = Color(0.2, 0.2, 0.22, 1)
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_clip"]
+direction = Vector3(0, 1, 0)
+spread = 45.0
+initial_velocity_min = 1.5
+initial_velocity_max = 3.5
+gravity = Vector3(0, -6, 0)
+scale_min = 0.04
+scale_max = 0.08
+
+[sub_resource type="QuadMesh" id="QuadMesh_clip"]
+size = Vector2(0.08, 0.08)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_clip"]
+albedo_color = Color(0.35, 0.62, 0.22, 1)
+billboard_mode = 3
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
+transparency = 1
+cull_mode = 2
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_spring"]
+radius = 0.25
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.819, -0.405, 0.405, 0, 0.707, 0.707, -0.574, -0.579, 0.579, 0, 12, 0)
+shadow_enabled = true
+
+[node name="MowMaskManager" type="Node" parent="."]
+script = ExtResource("2_mask")
+
+[node name="Property" type="Node3D" parent="."]
+script = ExtResource("3_prop")
+
+[node name="Ground" type="MeshInstance3D" parent="Property"]
+
+[node name="AmbientBirds" type="AudioStreamPlayer" parent="Property"]
+stream = ExtResource("14_birds")
+autoplay = false
+
+[node name="AmbientWind" type="AudioStreamPlayer" parent="Property"]
+stream = ExtResource("15_wind")
+autoplay = false
+
+[node name="GrassField" type="Node3D" parent="."]
+script = ExtResource("4_grass")
+
+[node name="GrassMultiMesh" type="MultiMeshInstance3D" parent="GrassField"]
+
+[node name="Player" type="CharacterBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 8)
+floor_snap_length = 0.2
+script = ExtResource("5_mower")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+shape = SubResource("CapsuleShape3D_player")
+
+[node name="MowerPivot" type="Node3D" parent="Player"]
+
+[node name="DeckMesh" type="MeshInstance3D" parent="Player/MowerPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.18, 0.15)
+mesh = SubResource("BoxMesh_deck")
+surface_material_override/0 = SubResource("StandardMaterial3D_mower")
+
+[node name="HandleMesh" type="MeshInstance3D" parent="Player/MowerPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, -0.35)
+mesh = SubResource("BoxMesh_handle")
+surface_material_override/0 = SubResource("StandardMaterial3D_handle")
+
+[node name="DeckMarker" type="Marker3D" parent="Player/MowerPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0.45)
+
+[node name="ClippingParticles" type="GPUParticles3D" parent="Player/MowerPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0.45)
+emitting = false
+amount = 24
+lifetime = 0.45
+one_shot = false
+explosiveness = 0.85
+process_material = SubResource("ParticleProcessMaterial_clip")
+draw_pass_1 = SubResource("QuadMesh_clip")
+material_override = SubResource("StandardMaterial3D_clip")
+
+[node name="EngineAudio" type="AudioStreamPlayer3D" parent="Player"]
+stream = ExtResource("12_eng")
+max_distance = 18.0
+
+[node name="CutAudio" type="AudioStreamPlayer3D" parent="Player"]
+stream = ExtResource("13_cut")
+max_distance = 12.0
+
+[node name="CameraRig" type="Node3D" parent="Player"]
+script = ExtResource("6_cam")
+
+[node name="CameraPivot" type="Node3D" parent="Player/CameraRig"]
+
+[node name="PitchPivot" type="Node3D" parent="Player/CameraRig/CameraPivot"]
+rotation = Vector3(-0.18, 0, 0)
+
+[node name="SpringArm3D" type="SpringArm3D" parent="Player/CameraRig/CameraPivot/PitchPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+shape = SubResource("SphereShape3D_spring")
+spring_length = 5.5
+collision_mask = 1
+
+[node name="Camera3D" type="Camera3D" parent="Player/CameraRig/CameraPivot/PitchPivot/SpringArm3D"]
+current = true
+fov = 58.0
+
+[node name="AudioManager" type="Node" parent="."]
+script = ExtResource("11_audio")
+
+[node name="Birds" type="AudioStreamPlayer" parent="AudioManager"]
+stream = ExtResource("14_birds")
+
+[node name="Wind" type="AudioStreamPlayer" parent="AudioManager"]
+stream = ExtResource("15_wind")
+
+[node name="Starter" type="AudioStreamPlayer" parent="AudioManager"]
+stream = ExtResource("16_start")
+
+[node name="EngineIdle" type="AudioStreamPlayer" parent="AudioManager"]
+stream = ExtResource("12_eng")
+
+[node name="EngineLoad" type="AudioStreamPlayer" parent="AudioManager"]
+stream = ExtResource("17_load")
+
+[node name="GrassCut" type="AudioStreamPlayer" parent="AudioManager"]
+stream = ExtResource("13_cut")
+
+[node name="TouchUI" type="CanvasLayer" parent="."]
+script = ExtResource("7_touch")
+
+[node name="MoveJoystick" type="Control" parent="TouchUI"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 640.0
+offset_bottom = 1170.0
+mouse_filter = 0
+script = ExtResource("8_joystick")
+
+[node name="Base" type="Control" parent="TouchUI/MoveJoystick"]
+visible = false
+layout_mode = 0
+offset_left = -80.0
+offset_top = -80.0
+offset_right = 80.0
+offset_bottom = 80.0
+
+[node name="Knob" type="Control" parent="TouchUI/MoveJoystick/Base"]
+layout_mode = 0
+offset_left = 50.0
+offset_top = 50.0
+offset_right = 110.0
+offset_bottom = 110.0
+
+[node name="CameraJoystick" type="Control" parent="TouchUI"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 640.0
+offset_right = 2532.0
+offset_bottom = 1170.0
+mouse_filter = 0
+script = ExtResource("8_joystick")
+
+[node name="Base" type="Control" parent="TouchUI/CameraJoystick"]
+visible = false
+layout_mode = 0
+offset_left = -80.0
+offset_top = -80.0
+offset_right = 80.0
+offset_bottom = 80.0
+
+[node name="Knob" type="Control" parent="TouchUI/CameraJoystick/Base"]
+layout_mode = 0
+offset_left = 50.0
+offset_top = 50.0
+offset_right = 110.0
+offset_bottom = 110.0
+
+[node name="EngineButton" type="Button" parent="TouchUI"]
+layout_mode = 0
+offset_left = 2200.0
+offset_top = 980.0
+offset_right = 2460.0
+offset_bottom = 1100.0
+theme_override_font_sizes/font_size = 28
+text = "Pull Cord"
+
+[node name="DesktopHint" type="Label" parent="TouchUI"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 700.0
+offset_bottom = 80.0
+theme_override_colors/font_color = Color(1, 1, 1, 0.65)
+text = "Desktop: WASD move · A/D turn · Space pull cord · Hold RMB camera"
+
+[node name="GradingScreen" type="CanvasLayer" parent="."]
+script = ExtResource("9_grade")
+
+[node name="Panel" type="PanelContainer" parent="GradingScreen"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -320.0
+offset_top = -280.0
+offset_right = 320.0
+offset_bottom = 280.0
+
+[node name="Margin" type="MarginContainer" parent="GradingScreen/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="GradingScreen/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="GradingScreen/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 34
+text = "Job Complete"
+horizontal_alignment = 1
+
+[node name="Accuracy" type="Label" parent="GradingScreen/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Cut Accuracy: --"
+
+[node name="Stripe" type="Label" parent="GradingScreen/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Stripe Quality: --"
+
+[node name="Missed" type="Label" parent="GradingScreen/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Missed Grass: --"
+
+[node name="Time" type="Label" parent="GradingScreen/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Time: --"
+
+[node name="Rating" type="Label" parent="GradingScreen/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "Overall Rating: --"
+
+[node name="Money" type="Label" parent="GradingScreen/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Earned: $12"
+
+[node name="ReplayButton" type="Button" parent="GradingScreen/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Mow Again"
+
+[node name="OpeningSequence" type="CanvasLayer" parent="."]
+script = ExtResource("10_open")
+
+[node name="Fade" type="ColorRect" parent="OpeningSequence"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.05, 0.04, 0.03, 1)
+
+[node name="TitleLabel" type="Label" parent="OpeningSequence"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -500.0
+offset_top = -120.0
+offset_right = 500.0
+offset_bottom = 20.0
+theme_override_colors/font_color = Color(0.96, 0.9, 0.75, 1)
+theme_override_font_sizes/font_size = 42
+text = "1998
+Pine Hollow, Wisconsin
+The first day of summer."
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="OpeningSequence"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = 40.0
+offset_right = 400.0
+offset_bottom = 100.0
+theme_override_colors/font_color = Color(0.88, 0.82, 0.68, 1)
+theme_override_font_sizes/font_size = 28
+text = "\"You keep what you earn.\""
+horizontal_alignment = 1

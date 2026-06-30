@@ -1,0 +1,63 @@
+name: Deploy Web Build
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Export Web
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.3
+    env:
+      GODOT_VERSION: 4.3
+      PROJECT_PATH: .
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup export templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates/
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable \
+            ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+
+      - name: Import and export Web build
+        run: |
+          mkdir -p build/web
+          cd "$PROJECT_PATH"
+          godot --headless --import
+          godot --headless --verbose --export-release "Web" "$(readlink -f build/web/index.html)"
+
+      - name: Add Pages metadata
+        run: |
+          touch build/web/.nojekyll
+          echo "Grass Stains web build" > build/web/.gitkeep
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

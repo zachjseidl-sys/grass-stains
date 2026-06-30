@@ -1,0 +1,10 @@
+.godot/
+.import/
+build/
+export/*.ipa
+export/*.xcarchive
+export_presets.cfg.bak
+*.translation
+*.tmp
+.DS_Store
+Thumbs.db
