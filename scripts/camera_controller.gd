@@ -8,9 +8,9 @@ extends Node3D
 @onready var spring_arm: SpringArm3D = $CameraPivot/PitchPivot/SpringArm3D
 
 var target_yaw: float = 0.0
-var target_pitch: float = -0.18
-var min_pitch := -0.26
-var max_pitch := 0.55
+var target_pitch: float = -0.28
+var min_pitch := -0.35
+var max_pitch := 0.45
 
 
 func _ready() -> void:

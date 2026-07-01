@@ -15,6 +15,12 @@ var progress_ratio: float = 0.0
 var streak: int = 0
 var multiplier: float = 1.0
 
+var _dragging_move: bool = false
+var _dragging_camera: bool = false
+var _drag_origin: Vector2 = Vector2.ZERO
+var _fallback_move: Vector2 = Vector2.ZERO
+var _fallback_camera: Vector2 = Vector2.ZERO
+
 
 func _ready() -> void:
 	engine_button.pressed.connect(_on_engine_button_pressed)
@@ -23,34 +29,90 @@ func _ready() -> void:
 	_layout_for_screen()
 	get_tree().root.size_changed.connect(_layout_for_screen)
 	_update_job_card()
+	_update_hint_text()
 
-	if OS.has_feature("web"):
-		desktop_hint.text = "Start Mower · Drag left to move · Drag right for camera"
-	elif DisplayServer.is_touchscreen_available():
-		desktop_hint.text = "Start Mower · Left thumb move · Right thumb camera"
+
+func _update_hint_text() -> void:
+	if OS.has_feature("web") or DisplayServer.is_touchscreen_available():
+		desktop_hint.text = "1) Tap Start Mower   2) Drag LEFT half = drive   3) Drag RIGHT half = look"
 	else:
-		desktop_hint.text = "Click to focus · WASD move · Space start/stop mower · Drag sides or RMB camera"
+		desktop_hint.text = "WASD = drive · Space = start/stop · Hold LMB left half = drive · RMB = camera"
 
 
 func _layout_for_screen() -> void:
 	var size := get_viewport().get_visible_rect().size
-	move_joystick.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	move_joystick.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
 	move_joystick.offset_right = size.x * 0.5
 	move_joystick.offset_bottom = size.y
-	camera_joystick.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
+	camera_joystick.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
 	camera_joystick.offset_left = size.x * 0.5
 	camera_joystick.offset_right = size.x
 	camera_joystick.offset_bottom = size.y
-	engine_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	engine_button.offset_left = -280.0
-	engine_button.offset_top = -140.0
+	engine_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	engine_button.offset_left = -260.0
+	engine_button.offset_top = -120.0
 	engine_button.offset_right = -20.0
 	engine_button.offset_bottom = -20.0
-	$JobCard.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	$JobCard.offset_left = 24.0
-	$JobCard.offset_top = 92.0
-	$JobCard.offset_right = 610.0
-	$JobCard.offset_bottom = 282.0
+	$JobCard.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	$JobCard.offset_left = 20.0
+	$JobCard.offset_top = 88.0
+	$JobCard.offset_right = 520.0
+	$JobCard.offset_bottom = 248.0
+	desktop_hint.add_theme_color_override("font_color", Color(1, 0.98, 0.92))
+	desktop_hint.add_theme_font_size_override("font_size", 22)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	var size := get_viewport().get_visible_rect().size
+	var mid_x := size.x * 0.5
+
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_grab_game_focus()
+			if event.position.x < mid_x:
+				_dragging_move = true
+				_drag_origin = event.position
+			else:
+				_dragging_camera = true
+				_drag_origin = event.position
+		else:
+			_dragging_move = false
+			_dragging_camera = false
+			_fallback_move = Vector2.ZERO
+			_fallback_camera = Vector2.ZERO
+
+	elif event is InputEventScreenTouch:
+		if event.pressed:
+			_grab_game_focus()
+			if event.position.x < mid_x:
+				_dragging_move = true
+				_drag_origin = event.position
+			else:
+				_dragging_camera = true
+				_drag_origin = event.position
+		else:
+			_dragging_move = false
+			_dragging_camera = false
+			_fallback_move = Vector2.ZERO
+			_fallback_camera = Vector2.ZERO
+
+	elif event is InputEventMouseMotion and (_dragging_move or _dragging_camera):
+		var delta := event.position - _drag_origin
+		var norm := delta / 120.0
+		norm = norm.limit_length(1.0)
+		if _dragging_move:
+			_fallback_move = norm
+		if _dragging_camera:
+			_fallback_camera = norm
+
+	elif event is InputEventScreenDrag:
+		var delta := event.position - _drag_origin
+		var norm := delta / 120.0
+		norm = norm.limit_length(1.0)
+		if _dragging_move:
+			_fallback_move = norm
+		if _dragging_camera:
+			_fallback_camera = norm
 
 
 func _process(_delta: float) -> void:
@@ -59,6 +121,11 @@ func _process(_delta: float) -> void:
 
 	var move_out := move_joystick.get_output()
 	var cam_out := camera_joystick.get_output()
+
+	if _fallback_move.length() > move_out.length():
+		move_out = _fallback_move
+	if _fallback_camera.length() > cam_out.length():
+		cam_out = _fallback_camera
 
 	player.move_input = Vector2(move_out.x, -move_out.y)
 	player.turn_input = move_out.x
@@ -98,9 +165,8 @@ func _grab_game_focus() -> void:
 		DisplayServer.window_set_input_focus(window_id)
 
 
-func _on_engine_state_changed(state: int) -> void:
+func _on_engine_state_changed(_state: int) -> void:
 	engine_button.text = player.get_engine_button_label()
-	engine_button.disabled = false
 
 
 func set_progress(ratio: float) -> void:

@@ -30,6 +30,24 @@ func _ready() -> void:
 		engine_audio.stream.loop = true
 	if cut_audio.stream:
 		cut_audio.stream.loop = true
+	_add_mower_wheels()
+
+
+func _add_mower_wheels() -> void:
+	for x in [-0.32, 0.32]:
+		for z in [-0.12, 0.28]:
+			var wheel := MeshInstance3D.new()
+			var cyl := CylinderMesh.new()
+			cyl.top_radius = 0.12
+			cyl.bottom_radius = 0.12
+			cyl.height = 0.08
+			wheel.mesh = cyl
+			wheel.rotation_degrees = Vector3(0, 0, 90)
+			wheel.position = Vector3(x, 0.08, z)
+			var mat := StandardMaterial3D.new()
+			mat.albedo_color = Color(0.12, 0.12, 0.12)
+			wheel.material_override = mat
+			mower_pivot.add_child(wheel)
 
 
 func _physics_process(delta: float) -> void:
@@ -42,11 +60,10 @@ func _apply_movement(delta: float) -> void:
 	var max_speed := GameSettings.MAX_SPEED
 	var target_speed := move_input.y * max_speed
 
-	if engine_state != EngineState.RUNNING:
-		target_speed *= 0.5
-
 	if engine_state == EngineState.RUNNING:
 		target_speed *= lerpf(1.0, GameSettings.GRASS_RESISTANCE, 1.0 - grass_resistance)
+	else:
+		target_speed *= 0.75
 
 	var rate := GameSettings.ACCEL if absf(target_speed) > absf(speed) else GameSettings.DECEL
 	speed = move_toward(speed, target_speed, rate * delta)

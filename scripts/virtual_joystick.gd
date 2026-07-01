@@ -23,23 +23,29 @@ func _draw() -> void:
 	if not base.visible:
 		return
 	var base_center := base.size * 0.5
-	draw_circle(base_center, max_radius, Color(1, 1, 1, 0.08))
-	draw_arc(base_center, max_radius, 0, TAU, 48, Color(1, 1, 1, 0.25), 2.0)
+	draw_circle(base_center, max_radius, Color(1, 1, 1, 0.12))
+	draw_arc(base_center, max_radius, 0, TAU, 48, Color(1, 1, 1, 0.35), 2.5)
 	var knob_center := knob.position + knob.size * 0.5
-	draw_circle(knob_center, 36.0, Color(0.95, 0.92, 0.82, 0.55))
+	draw_circle(knob_center, 36.0, Color(0.95, 0.92, 0.82, 0.65))
 
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
-		_handle_press(event.index, event.position, event.pressed, false)
+		var pos := _to_canvas_pos(event.position)
+		_handle_press(event.index, pos, event.pressed, false)
 	elif event is InputEventScreenDrag:
 		if event.index == pointer_index:
-			_update_knob(event.position)
+			_update_knob(_to_canvas_pos(event.position))
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		_handle_press(0, event.position, event.pressed, true)
+		var pos := _to_canvas_pos(get_viewport().get_mouse_position())
+		_handle_press(0, pos, event.pressed, true)
 	elif event is InputEventMouseMotion:
 		if active and using_mouse and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-			_update_knob(event.position)
+			_update_knob(_to_canvas_pos(get_viewport().get_mouse_position()))
+
+
+func _to_canvas_pos(viewport_pos: Vector2) -> Vector2:
+	return viewport_pos
 
 
 func _handle_press(index: int, pos: Vector2, pressed: bool, mouse: bool) -> void:
@@ -64,7 +70,7 @@ func _handle_press(index: int, pos: Vector2, pressed: bool, mouse: bool) -> void
 
 func _process(delta: float) -> void:
 	if not active:
-		output = output.lerp(Vector2.ZERO, 0.2 * delta * 60.0)
+		output = output.lerp(Vector2.ZERO, minf(1.0, delta * 8.0))
 
 
 func _update_knob(pos: Vector2) -> void:

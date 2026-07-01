@@ -13,6 +13,7 @@ func _ready() -> void:
 	_props.name = "Neighborhood"
 	add_child(_props)
 	_build_ground()
+	_build_street_mesh()
 	_build_neighborhood()
 	_start_ambience()
 
@@ -51,26 +52,59 @@ func _build_ground() -> void:
 	ground_mesh.material_override = mat
 
 
+func _build_street_mesh() -> void:
+	var street := MeshInstance3D.new()
+	street.name = "StreetSurface"
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(7.5, 58)
+	street.mesh = plane
+	street.position = Vector3(0, 0.01, 10)
+	street.rotation_degrees = Vector3(0, 0, 0)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.20, 0.19, 0.18)
+	mat.roughness = 0.82
+	street.material_override = mat
+	_props.add_child(street)
+
+	for z in range(-14, 36, 6):
+		var line := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(0.12, 0.02, 2.8)
+		line.mesh = box
+		line.position = Vector3(0, 0.03, z)
+		var line_mat := StandardMaterial3D.new()
+		line_mat.albedo_color = Color(0.85, 0.82, 0.55)
+		line_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		line.material_override = line_mat
+		_props.add_child(line)
+
+
 func _build_neighborhood() -> void:
 	_build_street_props()
 	_build_player_home()
 	_build_neighbor_row(-1)
 	_add_parked_car(Vector3(1.2, 0, -4))
 	_add_mailbox(Vector3(7.5, 0, 30))
-	_add_street_lamp(Vector3(4.5, 0, 8))
-	_add_street_lamp(Vector3(4.5, 0, 24))
-	_add_white_fence_line(Vector3(18.5, 0, 12), 34.0, 0)
-	_add_white_fence_line(Vector3(18.5, 0, 12), 34.0, 90)
+	_add_street_lamp(Vector3(4.8, 0, 6))
+	_add_street_lamp(Vector3(4.8, 0, 22))
+	_add_white_fence_line(Vector3(18.5, 0, 10), 36.0, 0)
+	_add_sidewalk_slabs()
 	_add_static_collisions()
 	_add_ground_collision()
 
 
 func _build_street_props() -> void:
-	_add_mesh_box("StreetSign", Vector3(5.2, 1.6, 2), Vector3(0.12, 2.8, 0.12), Color(0.28, 0.26, 0.24))
-	_add_mesh_box("StreetSignBoard", Vector3(5.35, 2.5, 2), Vector3(1.4, 0.35, 0.08), Color(0.16, 0.34, 0.22))
+	_add_mesh_box("StreetSignPost", Vector3(5.2, 1.6, 2), Vector3(0.12, 2.8, 0.12), Color(0.28, 0.26, 0.24))
+	_add_mesh_box("StreetSignBoard", Vector3(5.35, 2.55, 2), Vector3(1.6, 0.4, 0.08), Color(0.16, 0.34, 0.22))
 	_add_mesh_box("Hydrant", Vector3(-1.5, 0.35, 14), Vector3(0.35, 0.7, 0.35), Color(0.78, 0.18, 0.14))
 	for z in [-10, -2, 6, 14, 22, 30]:
 		_add_tree(Vector3(-9.5, 0, float(z)), 0.9 + float(z % 3) * 0.08)
+
+
+func _add_sidewalk_slabs() -> void:
+	for z in range(-14, 34, 3):
+		_add_mesh_box("", Vector3(5.1, 0.04, z), Vector3(2.0, 0.08, 2.8), Color(0.64, 0.62, 0.58))
+		_add_mesh_box("", Vector3(-5.1, 0.04, z), Vector3(2.0, 0.08, 2.8), Color(0.60, 0.58, 0.54))
 
 
 func _build_player_home() -> void:
@@ -98,13 +132,10 @@ func _build_neighbor_row(side: int) -> void:
 			[Color(0.84, 0.78, 0.70), Color(0.38, 0.34, 0.30)],
 		][i]
 		_add_house("Neighbor_%d_%d" % [side, i], Vector3(base_x, 0, z), palette[0], palette[1], false)
-		if i == 1:
-			_add_mesh_box("NeighborPorch_%d" % side, Vector3(base_x + 2.8 * side, 0.15, z + 4), Vector3(3.5, 0.3, 2), palette[0] * 0.9)
 
 
 func _add_house(name: String, origin: Vector3, siding: Color, roof: Color, detailed: bool) -> void:
-	var body := _add_mesh_box("%s_Body" % name, origin + Vector3(0, 2.2, 0), Vector3(9, 4.4, 7), siding)
-	body.name = name
+	_add_mesh_box("%s_Body" % name, origin + Vector3(0, 2.2, 0), Vector3(9, 4.4, 7), siding)
 	_add_mesh_box("%s_Roof" % name, origin + Vector3(0, 5.0, 0), Vector3(10, 0.5, 8), roof)
 	_add_mesh_box("%s_RoofPeakL" % name, origin + Vector3(-2.2, 5.8, 0), Vector3(5.2, 0.35, 8.2), roof * 0.92)
 	_add_mesh_box("%s_RoofPeakR" % name, origin + Vector3(2.2, 5.8, 0), Vector3(5.2, 0.35, 8.2), roof * 0.88)
@@ -117,14 +148,13 @@ func _add_house(name: String, origin: Vector3, siding: Color, roof: Color, detai
 
 
 func _add_window(pos: Vector3, w: float, h: float, glow: float = 0.75) -> void:
-	var frame := _add_mesh_box("", pos, Vector3(w, h, 0.08), Color(0.92, 0.88, 0.78))
+	_add_mesh_box("", pos, Vector3(w, h, 0.08), Color(0.92, 0.88, 0.78))
 	var glass := _add_mesh_box("", pos + Vector3(0, 0, 0.02), Vector3(w * 0.82, h * 0.82, 0.04), Color(0.55, 0.72, 0.88))
 	glass.material_override = _make_mat(Color(0.95, 0.82, 0.55), 0.15, glow)
 
 
 func _add_door(pos: Vector3) -> void:
 	_add_mesh_box("", pos, Vector3(1.1, 2.2, 0.12), Color(0.36, 0.22, 0.14))
-	_add_mesh_box("", pos + Vector3(0.42, 0, 0.08), Vector3(0.08, 0.08, 0.08), Color(0.85, 0.7, 0.2))
 
 
 func _add_garage_door(pos: Vector3) -> void:
@@ -134,8 +164,6 @@ func _add_garage_door(pos: Vector3) -> void:
 func _add_parked_car(pos: Vector3) -> void:
 	_add_mesh_box("CarBody", pos + Vector3(0, 0.55, 0), Vector3(1.8, 0.7, 3.8), Color(0.18, 0.22, 0.28))
 	_add_mesh_box("CarCab", pos + Vector3(0, 1.0, -0.3), Vector3(1.6, 0.55, 2.0), Color(0.20, 0.24, 0.30))
-	_add_mesh_box("CarWheelFL", pos + Vector3(-0.75, 0.2, 1.1), Vector3(0.35, 0.35, 0.2), Color(0.1, 0.1, 0.1))
-	_add_mesh_box("CarWheelFR", pos + Vector3(0.75, 0.2, 1.1), Vector3(0.35, 0.35, 0.2), Color(0.1, 0.1, 0.1))
 
 
 func _add_mailbox(pos: Vector3) -> void:
@@ -154,23 +182,17 @@ func _add_white_fence_line(origin: Vector3, length: float, rot_deg: float) -> vo
 	for i in segments:
 		var offset := Vector3(0, 0, i * 1.2) if rot_deg == 0 else Vector3(i * 1.2, 0, 0)
 		_add_mesh_box("", origin + offset + Vector3(0, 0.45, 0), Vector3(0.08, 0.9, 0.08), Color(0.92, 0.90, 0.84))
-		if i < segments - 1:
-			var rail_offset := offset + Vector3(0, 0.75, 0.6 if rot_deg == 0 else 0)
-			if rot_deg != 0:
-				rail_offset = offset + Vector3(0.6, 0.75, 0)
-			_add_mesh_box("", origin + rail_offset, Vector3(1.15, 0.06, 0.06) if rot_deg == 0 else Vector3(0.06, 0.06, 1.15), Color(0.92, 0.90, 0.84))
 
 
 func _add_flower_bed(pos: Vector3, width: float) -> void:
 	_add_mesh_box("", pos + Vector3(0, 0.06, 0), Vector3(width, 0.12, 1.4), Color(0.36, 0.24, 0.16))
 	for i in range(int(width)):
-		var hue := 0.08 + randf() * 0.12
-		_add_mesh_box("", pos + Vector3(-width * 0.5 + i + 0.5, 0.22, randf_range(-0.2, 0.2)), Vector3(0.18, 0.28, 0.18), Color.from_hsv(hue, 0.55, 0.75))
+		_add_mesh_box("", pos + Vector3(-width * 0.5 + i + 0.5, 0.22, 0), Vector3(0.18, 0.28, 0.18), Color(0.85, 0.35, 0.55))
 
 
 func _add_shrub_cluster(pos: Vector3) -> void:
 	for i in range(4):
-		var p := pos + Vector3(randf_range(-1.2, 1.2), 0, randf_range(-1.2, 1.2))
+		var p := pos + Vector3(float(i - 2) * 0.7, 0, float(i % 2) * 0.6)
 		_add_mesh_box("", p + Vector3(0, 0.35, 0), Vector3(0.9, 0.7, 0.9), Color(0.18, 0.40, 0.16))
 
 
@@ -195,10 +217,8 @@ func _add_tree(pos: Vector3, scale: float = 1.0) -> void:
 		sphere.radius = (2.2 + i * 0.4) * scale
 		sphere.height = (4.0 + i * 0.5) * scale
 		foliage.mesh = sphere
-		var offset := Vector3(randf_range(-0.8, 0.8), 0, randf_range(-0.8, 0.8)) * scale
-		foliage.position = pos + Vector3(0, (4.2 + i * 0.6) * scale, 0) + offset
-		var green := Color(0.18 + randf() * 0.06, 0.42 + randf() * 0.08, 0.14)
-		foliage.material_override = _make_mat(green, 0.95)
+		foliage.position = pos + Vector3(0, (4.2 + i * 0.6) * scale, 0)
+		foliage.material_override = _make_mat(Color(0.18, 0.42, 0.14), 0.95)
 		_props.add_child(foliage)
 
 
@@ -232,20 +252,16 @@ func _add_static_collisions() -> void:
 	var static_body := StaticBody3D.new()
 	static_body.name = "PropertyCollisions"
 	_props.add_child(static_body)
-
 	var shapes: Array = [
 		[Vector3(14, 2.2, -2), Vector3(9, 4.4, 7)],
 		[Vector3(18.5, 2.2, -2), Vector3(4.5, 3.2, 5.5)],
 		[Vector3(10.5, 0.5, 8), Vector3(4.5, 1, 14)],
 		[Vector3(18.5, 0.5, 12), Vector3(0.4, 1.2, 34)],
-		[Vector3(18.5, 0.5, 29), Vector3(34, 1.2, 0.4)],
 		[Vector3(11, 2.5, 20), Vector3(3, 5, 3)],
 		[Vector3(-14, 2.2, -4), Vector3(9, 4.4, 7)],
 		[Vector3(-14, 2.2, 10), Vector3(9, 4.4, 7)],
 		[Vector3(-14, 2.2, 24), Vector3(9, 4.4, 7)],
-		[Vector3(1.2, 0.6, -4), Vector3(2, 1.2, 4)],
 	]
-
 	for entry in shapes:
 		var col := CollisionShape3D.new()
 		var shape := BoxShape3D.new()
@@ -257,7 +273,6 @@ func _add_static_collisions() -> void:
 
 func _add_ground_collision() -> void:
 	var ground_body := StaticBody3D.new()
-	ground_body.name = "GroundBody"
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
 	box.size = Vector3(80, 1, 80)
