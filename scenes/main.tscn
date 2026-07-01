@@ -90,7 +90,7 @@ script = ExtResource("4_grass")
 [node name="GrassMultiMesh" type="MultiMeshInstance3D" parent="GrassField"]
 
 [node name="Player" type="CharacterBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0.05, 6)
 floor_snap_length = 0.2
 script = ExtResource("5_mower")
 
@@ -143,7 +143,7 @@ rotation = Vector3(-0.18, 0, 0)
 [node name="SpringArm3D" type="SpringArm3D" parent="Player/CameraRig/CameraPivot/PitchPivot"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
 shape = SubResource("SphereShape3D_spring")
-spring_length = 5.5
+	spring_length = 6.5
 collision_mask = 1
 
 [node name="Camera3D" type="Camera3D" parent="Player/CameraRig/CameraPivot/PitchPivot/SpringArm3D"]
@@ -228,7 +228,7 @@ offset_top = 980.0
 offset_right = 2460.0
 offset_bottom = 1100.0
 theme_override_font_sizes/font_size = 28
-text = "Pull Cord"
+text = "Start Mower"
 
 [node name="DesktopHint" type="Label" parent="TouchUI"]
 layout_mode = 0
@@ -237,7 +237,7 @@ offset_top = 24.0
 offset_right = 700.0
 offset_bottom = 80.0
 theme_override_colors/font_color = Color(1, 1, 1, 0.65)
-text = "Desktop: WASD move · A/D turn · Space pull cord · Hold RMB camera"
+text = "Start Mower · Drag left to move · Drag right for camera"
 
 [node name="GradingScreen" type="CanvasLayer" parent="."]
 script = ExtResource("9_grade")

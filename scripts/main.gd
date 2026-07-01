@@ -17,27 +17,52 @@ var mowing_started: bool = false
 func _ready() -> void:
 	Engine.max_fps = 60
 	_setup_lighting()
-	player.look_at(Vector3(0.0, player.global_position.y, 18.0), Vector3.UP)
+	player.global_position = Vector3(10.5, 0.05, 6.0)
+	player.look_at(Vector3(16.0, player.global_position.y, 24.0), Vector3.UP)
 	_connect_systems()
 
 
 func _setup_lighting() -> void:
-	sun.rotation_degrees = Vector3(-38, -55, 0)
-	sun.light_color = Color(1.0, 0.92, 0.78)
-	sun.light_energy = 1.15
+	sun.rotation_degrees = Vector3(-42, -48, 0)
+	sun.light_color = Color(1.0, 0.90, 0.68)
+	sun.light_energy = 1.35
 	sun.shadow_enabled = true
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+	sun.directional_shadow_max_distance = 55.0
+
+	var fill := DirectionalLight3D.new()
+	fill.name = "FillLight"
+	fill.rotation_degrees = Vector3(-20, 120, 0)
+	fill.light_color = Color(0.72, 0.82, 0.98)
+	fill.light_energy = 0.28
+	add_child(fill)
 
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.62, 0.78, 0.95)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.95, 0.88, 0.72)
-	env.ambient_light_energy = 0.35
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.05
+	env.background_mode = Environment.BG_SKY
+	var sky := Sky.new()
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color(0.38, 0.58, 0.88)
+	sky_mat.sky_horizon_color = Color(0.78, 0.84, 0.92)
+	sky_mat.ground_bottom_color = Color(0.28, 0.34, 0.22)
+	sky_mat.ground_horizon_color = Color(0.62, 0.72, 0.58)
+	sky_mat.sun_angle_max = 28.0
+	sky_mat.sun_curve = 0.08
+	sky.sky_material = sky_mat
+	env.sky = sky
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.ambient_light_energy = 0.45
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.tonemap_exposure = 1.08
 	env.ssao_enabled = true
+	env.ssao_radius = 1.2
+	env.ssao_intensity = 0.6
 	env.glow_enabled = true
-	env.glow_intensity = 0.25
+	env.glow_intensity = 0.35
+	env.glow_bloom = 0.18
+	env.fog_enabled = true
+	env.fog_light_color = Color(0.92, 0.86, 0.72)
+	env.fog_density = 0.0022
+	env.fog_aerial_perspective = 0.15
 	world_env.environment = env
 
 

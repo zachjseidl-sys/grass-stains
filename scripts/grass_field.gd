@@ -1,6 +1,6 @@
 extends Node3D
 
-@export var instance_count: int = 5200
+@export var instance_count: int = 6800
 @export var lawn_origin: Vector2 = GameSettings.LAWN_ORIGIN
 @export var lawn_size: Vector2 = GameSettings.LAWN_SIZE
 
@@ -11,17 +11,20 @@ var mask_manager: Node = null
 
 func _ready() -> void:
 	if OS.has_feature("web"):
-		instance_count = 2800
+		instance_count = 3600
 	_build_grass()
 
 
 func setup(mask: Node) -> void:
 	mask_manager = mask
 	if mask_manager:
-		var tex: Texture2D = mask_manager.get_mask_texture()
-		var mat: ShaderMaterial = multimesh_instance.material_override as ShaderMaterial
-		if mat:
-			mat.set_shader_parameter("mow_mask", tex)
+		update_mask_texture(mask_manager.get_mask_texture())
+
+
+func update_mask_texture(tex: Texture2D) -> void:
+	var mat: ShaderMaterial = multimesh_instance.material_override as ShaderMaterial
+	if mat and tex:
+		mat.set_shader_parameter("mow_mask", tex)
 
 
 func _build_grass() -> void:
@@ -36,10 +39,10 @@ func _build_grass() -> void:
 	rng.seed = 1998
 
 	for i in instance_count:
-		var x := rng.randf_range(lawn_origin.x + 0.3, lawn_origin.x + lawn_size.x - 0.3)
-		var z := rng.randf_range(lawn_origin.y + 0.3, lawn_origin.y + lawn_size.y - 0.3)
+		var x := rng.randf_range(lawn_origin.x + 0.4, lawn_origin.x + lawn_size.x - 0.4)
+		var z := rng.randf_range(lawn_origin.y + 0.4, lawn_origin.y + lawn_size.y - 0.4)
 		var rot := rng.randf_range(0.0, TAU)
-		var scale := rng.randf_range(0.75, 1.25)
+		var scale := rng.randf_range(0.8, 1.35)
 		var basis := Basis(Vector3.UP, rot).scaled(Vector3(1.0, scale, 1.0))
 		var transform := Transform3D(basis, Vector3(x, 0.0, z))
 		multi.set_instance_transform(i, transform)
@@ -69,9 +72,8 @@ func _create_blade_mesh() -> ArrayMesh:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
 	var w := 0.08
-	var h := 0.42
+	var h := 0.44
 
-	# Two crossed quads for a soft blade clump.
 	for angle in [0.0, PI * 0.5]:
 		var dir := Vector3(cos(angle), 0.0, sin(angle)) * w
 		var v0 := Vector3(-dir.x, 0.0, -dir.z)
@@ -86,9 +88,3 @@ func _create_blade_mesh() -> ArrayMesh:
 		st.set_uv(Vector2(0, 0)); st.add_vertex(v3)
 
 	return st.commit()
-
-
-func update_mask_texture(tex: Texture2D) -> void:
-	var mat: ShaderMaterial = multimesh_instance.material_override as ShaderMaterial
-	if mat:
-		mat.set_shader_parameter("mow_mask", tex)

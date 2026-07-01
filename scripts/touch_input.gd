@@ -17,11 +17,11 @@ func _ready() -> void:
 	get_tree().root.size_changed.connect(_layout_for_screen)
 
 	if OS.has_feature("web"):
-		desktop_hint.text = "Tap Pull Cord to start · Drag left side to move · Drag right side for camera"
+		desktop_hint.text = "Start Mower · Drag left to move · Drag right for camera"
 	elif DisplayServer.is_touchscreen_available():
-		desktop_hint.text = "Pull Cord to start · Left thumb move · Right thumb camera"
+		desktop_hint.text = "Start Mower · Left thumb move · Right thumb camera"
 	else:
-		desktop_hint.text = "Click game to focus · WASD move · Space pull cord · Drag sides or hold RMB"
+		desktop_hint.text = "Click to focus · WASD move · Space start/stop mower · Drag sides or RMB camera"
 
 
 func _layout_for_screen() -> void:
@@ -87,4 +87,4 @@ func _grab_game_focus() -> void:
 
 func _on_engine_state_changed(state: int) -> void:
 	engine_button.text = player.get_engine_button_label()
-	engine_button.disabled = state == player.EngineState.STARTING
+	engine_button.disabled = false

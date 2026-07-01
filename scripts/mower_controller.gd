@@ -40,21 +40,16 @@ func _physics_process(delta: float) -> void:
 
 func _apply_movement(delta: float) -> void:
 	var max_speed := GameSettings.MAX_SPEED
-	if engine_state == EngineState.OFF or engine_state == EngineState.STARTING:
-		# Push the mower by hand before/without the engine running.
-		max_speed *= 0.45
-	elif engine_state == EngineState.IDLE:
-		max_speed *= 0.65
+	var target_speed := move_input.y * max_speed
 
-	if engine_state == EngineState.OFF or engine_state == EngineState.STARTING or engine_state == EngineState.IDLE:
-		var target_speed := move_input.y * max_speed
-		var rate := GameSettings.ACCEL if absf(target_speed) > absf(speed) else GameSettings.DECEL
-		speed = move_toward(speed, target_speed, rate * delta)
-	elif engine_state == EngineState.RUNNING:
-		var target_speed := move_input.y * max_speed
+	if engine_state != EngineState.RUNNING:
+		target_speed *= 0.5
+
+	if engine_state == EngineState.RUNNING:
 		target_speed *= lerpf(1.0, GameSettings.GRASS_RESISTANCE, 1.0 - grass_resistance)
-		var rate := GameSettings.ACCEL if absf(target_speed) > absf(speed) else GameSettings.DECEL
-		speed = move_toward(speed, target_speed, rate * delta)
+
+	var rate := GameSettings.ACCEL if absf(target_speed) > absf(speed) else GameSettings.DECEL
+	speed = move_toward(speed, target_speed, rate * delta)
 
 	var turn_scale := lerpf(1.0, GameSettings.TURN_RATE_FAST / GameSettings.TURN_RATE, absf(speed) / GameSettings.MAX_SPEED)
 	rotate_y(-turn_input * GameSettings.TURN_RATE * turn_scale * delta)
@@ -116,20 +111,13 @@ func _update_audio_load() -> void:
 func pull_starter_cord() -> void:
 	if engine_state != EngineState.OFF:
 		return
-	engine_state = EngineState.STARTING
+	engine_state = EngineState.RUNNING
 	engine_state_changed.emit(engine_state)
 	if audio_manager:
 		audio_manager.play_starter_cord()
-	await get_tree().create_timer(0.55).timeout
-	engine_state = EngineState.IDLE
-	engine_state_changed.emit(engine_state)
-	await get_tree().create_timer(0.15).timeout
-	engine_state = EngineState.RUNNING
-	engine_state_changed.emit(engine_state)
+		audio_manager.on_engine_running()
 	if engine_audio.stream:
 		engine_audio.play()
-	if audio_manager:
-		audio_manager.on_engine_running()
 
 
 func stop_engine() -> void:
@@ -153,13 +141,7 @@ func toggle_engine() -> void:
 
 
 func get_engine_button_label() -> String:
-	match engine_state:
-		EngineState.OFF:
-			return "Pull Cord"
-		EngineState.STARTING:
-			return "..."
-		_:
-			return "Stop"
+	return "Stop" if engine_state == EngineState.RUNNING else "Start Mower"
 
 
 func is_engine_running() -> bool:
