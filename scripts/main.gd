@@ -75,6 +75,7 @@ func _connect_systems() -> void:
 	touch_ui.camera_controller = player.get_node("CameraRig")
 
 	mask_manager.progress_changed.connect(_on_progress_changed)
+	mask_manager.streak_changed.connect(_on_streak_changed)
 	mask_manager.lawn_complete.connect(_on_lawn_complete)
 	player.engine_state_changed.connect(_on_engine_state_changed)
 
@@ -84,13 +85,22 @@ func _connect_systems() -> void:
 
 
 func _on_progress_changed(ratio: float) -> void:
+	if touch_ui.has_method("set_progress"):
+		touch_ui.set_progress(ratio)
 	if not mowing_started and ratio > 0.001:
 		mowing_started = true
 		grading_screen.start_timer()
 
 
+func _on_streak_changed(streak: int, multiplier: float) -> void:
+	if touch_ui.has_method("set_streak"):
+		touch_ui.set_streak(streak, multiplier)
+
+
 func _on_lawn_complete(stats: Dictionary) -> void:
 	touch_ui.visible = false
+	var career := GameSettings.complete_job(stats)
+	stats["career"] = career
 	grading_screen.show_results(stats)
 
 

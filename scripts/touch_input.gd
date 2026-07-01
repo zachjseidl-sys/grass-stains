@@ -4,9 +4,16 @@ extends CanvasLayer
 @onready var camera_joystick: Control = $CameraJoystick
 @onready var engine_button: Button = $EngineButton
 @onready var desktop_hint: Label = $DesktopHint
+@onready var job_label: Label = $JobCard/Margin/VBox/Job
+@onready var career_label: Label = $JobCard/Margin/VBox/Career
+@onready var progress_label: Label = $JobCard/Margin/VBox/Progress
+@onready var combo_label: Label = $JobCard/Margin/VBox/Combo
 @onready var player: CharacterBody3D = get_node("../Player")
 
 var camera_controller: Node3D = null
+var progress_ratio: float = 0.0
+var streak: int = 0
+var multiplier: float = 1.0
 
 
 func _ready() -> void:
@@ -15,6 +22,7 @@ func _ready() -> void:
 	_on_engine_state_changed(player.engine_state)
 	_layout_for_screen()
 	get_tree().root.size_changed.connect(_layout_for_screen)
+	_update_job_card()
 
 	if OS.has_feature("web"):
 		desktop_hint.text = "Start Mower · Drag left to move · Drag right for camera"
@@ -38,6 +46,11 @@ func _layout_for_screen() -> void:
 	engine_button.offset_top = -140.0
 	engine_button.offset_right = -20.0
 	engine_button.offset_bottom = -20.0
+	$JobCard.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	$JobCard.offset_left = 24.0
+	$JobCard.offset_top = 92.0
+	$JobCard.offset_right = 610.0
+	$JobCard.offset_bottom = 282.0
 
 
 func _process(_delta: float) -> void:
@@ -88,3 +101,24 @@ func _grab_game_focus() -> void:
 func _on_engine_state_changed(state: int) -> void:
 	engine_button.text = player.get_engine_button_label()
 	engine_button.disabled = false
+
+
+func set_progress(ratio: float) -> void:
+	progress_ratio = ratio
+	_update_job_card()
+
+
+func set_streak(new_streak: int, new_multiplier: float) -> void:
+	streak = new_streak
+	multiplier = new_multiplier
+	_update_job_card()
+
+
+func _update_job_card() -> void:
+	if not is_inside_tree():
+		return
+	var job := GameSettings.get_current_job()
+	job_label.text = "%s — %s" % [job.get("name", "Next Job"), job.get("client", "Client")]
+	career_label.text = "%s  •  Cash $%d  •  Rep %d" % [job.get("tier", "Side Hustle"), GameSettings.cash, GameSettings.reputation]
+	progress_label.text = "Lawn %.1f%% / %.1f%% complete" % [progress_ratio * 100.0, float(job.get("threshold", GameSettings.MOW_COMPLETE_THRESHOLD)) * 100.0]
+	combo_label.text = "Clean-cut streak %d  •  Tip x%.2f" % [streak, multiplier]

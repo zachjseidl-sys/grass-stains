@@ -1,6 +1,7 @@
 extends Node
 
 signal progress_changed(ratio: float)
+signal streak_changed(streak: int, multiplier: float)
 signal lawn_complete(stats: Dictionary)
 
 @export var lawn_origin: Vector2 = GameSettings.LAWN_ORIGIN
@@ -18,6 +19,11 @@ var is_complete: bool = false
 
 var stripe_samples: Array[Vector2] = []
 var stripe_sample_limit: int = 4096
+var current_streak: int = 0
+var best_streak: int = 0
+var last_stamp_had_cut: bool = false
+var wasted_passes: int = 0
+var total_newly_cut_pixels: int = 0
 
 
 func _ready() -> void:
@@ -78,6 +84,7 @@ func stamp_deck(world_xz: Vector2, facing: Vector2, radius: float, width: float)
 
 	var dir_encoded := Vector2(dir.x * 0.5 + 0.5, dir.y * 0.5 + 0.5)
 	var newly_cut := 0
+	var touched_pixels := 0
 	var resistance_sum := 0.0
 	var resistance_count := 0
 
@@ -97,6 +104,7 @@ func stamp_deck(world_xz: Vector2, facing: Vector2, radius: float, width: float)
 			var existing := mask_image.get_pixelv(pixel)
 			resistance_sum += 1.0 - existing.r
 			resistance_count += 1
+			touched_pixels += 1
 
 			if existing.r < 0.95:
 				newly_cut += 1
@@ -106,6 +114,8 @@ func stamp_deck(world_xz: Vector2, facing: Vector2, radius: float, width: float)
 			if stripe_samples.size() < stripe_sample_limit:
 				stripe_samples.append(dir)
 
+	_update_streak(newly_cut, touched_pixels)
+	total_newly_cut_pixels += newly_cut
 	mask_texture.update(mask_image)
 	_update_progress()
 
@@ -113,7 +123,29 @@ func stamp_deck(world_xz: Vector2, facing: Vector2, radius: float, width: float)
 	if resistance_count > 0:
 		resistance = resistance_sum / float(resistance_count)
 
-	return {"newly_cut": newly_cut, "resistance": resistance}
+	return {"newly_cut": newly_cut, "resistance": resistance, "streak": current_streak, "multiplier": get_combo_multiplier()}
+
+
+func _update_streak(newly_cut: int, touched_pixels: int) -> void:
+	if newly_cut > 0:
+		current_streak += newly_cut
+		best_streak = maxi(best_streak, current_streak)
+		last_stamp_had_cut = true
+	elif touched_pixels > 0 and last_stamp_had_cut:
+		wasted_passes += 1
+		current_streak = 0
+		last_stamp_had_cut = false
+	streak_changed.emit(current_streak, get_combo_multiplier())
+
+
+func get_combo_multiplier() -> float:
+	if current_streak >= 1600:
+		return 1.5
+	if current_streak >= 900:
+		return 1.35
+	if current_streak >= 400:
+		return 1.2
+	return 1.0
 
 
 func _update_grid_from_pixel(pixel: Vector2i) -> void:
@@ -130,7 +162,8 @@ func _update_progress() -> void:
 		return
 	progress_ratio = float(grid_cut_count) / float(total_grid_cells)
 	progress_changed.emit(progress_ratio)
-	if not is_complete and progress_ratio >= GameSettings.MOW_COMPLETE_THRESHOLD:
+	var job_threshold := float(GameSettings.get_current_job().get("threshold", GameSettings.MOW_COMPLETE_THRESHOLD))
+	if not is_complete and progress_ratio >= job_threshold:
 		is_complete = true
 		lawn_complete.emit(get_stats())
 
@@ -140,13 +173,24 @@ func get_stats() -> Dictionary:
 	var stripe_quality := _calculate_stripe_quality()
 	var accuracy := progress_ratio * 100.0
 	var rating := _calculate_rating(accuracy, stripe_quality, missed_cells)
+	var job := GameSettings.get_current_job()
+	var efficiency := _calculate_efficiency()
+	var multiplier := maxf(get_combo_multiplier(), 1.0)
+	var money := int(round(float(job.get("base_pay", GameSettings.PLACEHOLDER_PAY)) * (0.65 + accuracy / 200.0) + float(job.get("tip", 0)) * stripe_quality / 100.0 * multiplier))
+	var reputation := int(clampf((accuracy - 85.0) / 5.0, 1.0, 5.0))
 	return {
 		"accuracy": accuracy,
 		"stripe_quality": stripe_quality,
 		"missed_grass": missed_cells,
 		"missed_percent": (float(missed_cells) / float(total_grid_cells)) * 100.0,
 		"rating": rating,
-		"money": GameSettings.PLACEHOLDER_PAY,
+		"money": money,
+		"reputation": reputation,
+		"best_streak": best_streak,
+		"wasted_passes": wasted_passes,
+		"efficiency": efficiency,
+		"job_name": job.get("name", "Next Job"),
+		"client": job.get("client", "Client"),
 	}
 
 
@@ -162,6 +206,11 @@ func _calculate_stripe_quality() -> float:
 		consistency += clampf(dir.dot(avg.normalized()), 0.0, 1.0)
 	consistency /= float(stripe_samples.size())
 	return clampf(consistency * 100.0, 0.0, 100.0)
+
+
+func _calculate_efficiency() -> float:
+	var denominator := maxf(float(total_newly_cut_pixels + wasted_passes * 64), 1.0)
+	return clampf(float(total_newly_cut_pixels) / denominator * 100.0, 0.0, 100.0)
 
 
 func _calculate_rating(accuracy: float, stripe_quality: float, missed_cells: int) -> String:
@@ -180,4 +229,9 @@ func reset_mask() -> void:
 	progress_ratio = 0.0
 	is_complete = false
 	stripe_samples.clear()
+	current_streak = 0
+	best_streak = 0
+	wasted_passes = 0
+	total_newly_cut_pixels = 0
 	progress_changed.emit(0.0)
+	streak_changed.emit(0, 1.0)
